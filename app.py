@@ -1,10 +1,4 @@
-# Add this right after st.set_page_config, before any imports
 import streamlit as st
-try:
-    st.write("Checking secrets...")
-    st.write("Has OPENAI_API_KEY:", "OPENAI_API_KEY" in st.secrets if hasattr(st, 'secrets') else "No secrets")
-except:
-    st.write("No secrets available")
 import time
 import streamlit.components.v1 as _components
 

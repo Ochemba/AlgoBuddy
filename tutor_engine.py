@@ -549,27 +549,27 @@ def get_hint(problem, hint_level=1, pre_generated_hints=None):
     return "❌ Could not generate hint."
 
 
-# ── ASSIGNMENT HELPER ──────────────────────────────────────────────────────────
-from assignment_helper import AssignmentHelper
-assignment_helper = AssignmentHelper("Student")
+# # ── ASSIGNMENT HELPER ──────────────────────────────────────────────────────────
+# from assignment_helper import AssignmentHelper
+# assignment_helper = AssignmentHelper("Student")
 
-def start_assignment_help(assignment_text):
-    log_student_action("Start Assignment Help", f"Length:{len(assignment_text)}")
-    breakdown = assignment_helper.analyze_assignment(assignment_text)
-    if not breakdown:
-        return {"error": "Could not analyze assignment"}
-    initial = assignment_helper.get_guidance("I'm ready to start!")
-    return {"breakdown": breakdown, "initial_guidance": initial,
-            "total_steps": len(breakdown["steps"]), "difficulty": breakdown["difficulty_estimate"]}
+# def start_assignment_help(assignment_text):
+#     log_student_action("Start Assignment Help", f"Length:{len(assignment_text)}")
+#     breakdown = assignment_helper.analyze_assignment(assignment_text)
+#     if not breakdown:
+#         return {"error": "Could not analyze assignment"}
+#     initial = assignment_helper.get_guidance("I'm ready to start!")
+#     return {"breakdown": breakdown, "initial_guidance": initial,
+#             "total_steps": len(breakdown["steps"]), "difficulty": breakdown["difficulty_estimate"]}
 
-def continue_assignment_help(student_message):
-    guidance = assignment_helper.get_guidance(student_message)
-    return {"guidance": guidance, "current_step": assignment_helper.current_step + 1,
-            "steps_completed": len(assignment_helper.steps_completed),
-            "is_complete": assignment_helper.is_assignment_complete()}
+# def continue_assignment_help(student_message):
+#     guidance = assignment_helper.get_guidance(student_message)
+#     return {"guidance": guidance, "current_step": assignment_helper.current_step + 1,
+#             "steps_completed": len(assignment_helper.steps_completed),
+#             "is_complete": assignment_helper.is_assignment_complete()}
 
-def reset_assignment_helper():
-    assignment_helper.reset()
+# def reset_assignment_helper():
+#     assignment_helper.reset()
 
 
 # ── PROGRESS ───────────────────────────────────────────────────────────────────

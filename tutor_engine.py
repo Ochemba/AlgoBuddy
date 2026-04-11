@@ -1,5 +1,7 @@
 from openai import OpenAI
-import os, json
+import os
+import json
+import time
 from dotenv import load_dotenv
 from prompts import (
     get_system_prompt, SCAFFOLDING_PROMPT,
@@ -9,11 +11,17 @@ from prompts import (
 from progress_tracker import ProgressTracker
 from validators import validate_topic, validate_difficulty, validate_user_message, validate_hint_level, validate_course, validate_persona, ValidationError
 from logger import log_info, log_error, log_warning, log_api_call, log_student_action
-import time
+
+# Clear any proxy environment variables that might cause issues
+os.environ.pop('HTTP_PROXY', None)
+os.environ.pop('HTTPS_PROXY', None)
+os.environ.pop('http_proxy', None)
+os.environ.pop('https_proxy', None)
 
 load_dotenv()
 
 def _get_api_key():
+    """Get OpenAI API key from st.secrets or environment variable."""
     try:
         import streamlit as st
         key = st.secrets.get("OPENAI_API_KEY")
@@ -23,18 +31,12 @@ def _get_api_key():
         pass
     return os.getenv("OPENAI_API_KEY")
 
-def _get_client():
-    try:
-        import httpx
-        # Create client without proxy to avoid the 'proxies' argument error
-        http_client = httpx.Client(proxies=None)
-        return OpenAI(
-            api_key=_get_api_key(),
-            http_client=http_client
-        )
-    except ImportError:
-        # Fallback if httpx is not available
-        return OpenAI(api_key=_get_api_key())
+# Initialize OpenAI client - simplest possible way
+api_key = _get_api_key()
+if not api_key:
+    raise ValueError("OpenAI API key not found. Please set OPENAI_API_KEY in secrets or .env file.")
+
+client = OpenAI(api_key=api_key)
 
 conversation_history = []
 api_call_count = 0
@@ -68,8 +70,9 @@ def optimize_conversation_history():
 # ── MAIN CHAT ─────────────────────────────────────────────────────────────────
 def get_tutor_response(message=None, use_scaffolding=False,
                        student_name="Student", course_id=None,
-                       topic_id=None, persona="default", assignment_mode = False, user_message=None,
-                       file_context: str = None, image_data: dict = None):
+                       topic_id=None, persona="default", assignment_mode=False, user_message=None,
+                       file_context: str = None, image_data: dict = None,
+                       learning_profile=None):
     user_message = message or user_message or ""
     log_student_action("Asked Question", f"Length: {len(user_message)}")
     try:
@@ -78,7 +81,7 @@ def get_tutor_response(message=None, use_scaffolding=False,
         return f"❌ Invalid input: {e}"
 
     system_prompt = get_system_prompt(student_name=student_name, course_id=course_id,
-                                      topic_id=topic_id, persona=persona,assignment_mode=assignment_mode)
+                                      topic_id=topic_id, persona=persona, assignment_mode=assignment_mode)
     if use_scaffolding:
         system_prompt += "\n\n" + SCAFFOLDING_PROMPT
 
@@ -106,7 +109,7 @@ def get_tutor_response(message=None, use_scaffolding=False,
 
     for attempt in range(3):
         try:
-            response = _get_client().chat.completions.create(
+            response = client.chat.completions.create(
                 model="gpt-4o" if image_data else "gpt-3.5-turbo",
                 messages=messages, max_tokens=400, temperature=0.7
             )
@@ -118,10 +121,14 @@ def get_tutor_response(message=None, use_scaffolding=False,
             err = str(e)
             log_error(f"Attempt {attempt+1} failed", e)
             if attempt == 2:
-                if "api_key" in err.lower(): return "❌ Error: Invalid API key."
-                elif "connection" in err.lower(): return "❌ Error: Cannot connect to OpenAI."
-                elif "rate_limit" in err.lower(): return "❌ Error: Rate limit hit."
-                else: return f"❌ Error: {err}"
+                if "api_key" in err.lower():
+                    return "❌ Error: Invalid API key. Please check your secrets configuration."
+                elif "connection" in err.lower():
+                    return "❌ Error: Cannot connect to OpenAI. Please check your internet."
+                elif "rate_limit" in err.lower():
+                    return "❌ Error: Rate limit hit. Please wait a moment and try again."
+                else:
+                    return f"❌ Error: {err}"
             time.sleep(2)
     return "❌ Error: Could not get response."
 
@@ -157,11 +164,7 @@ FILL_BLANK_TOPICS = {
 }
 
 def _pick_question_type(topic_id: str, course_id: str, seed_context: str) -> str:
-    """
-    Rotate question types roughly 1/3 each: MCQ → FILL_BLANK → STANDARD.
-    Fill-blank only for coding/syntax topics; otherwise swap to STANDARD.
-    Uses a simple counter stored in a module-level list so it persists per session.
-    """
+    """Rotate question types: MCQ → FILL_BLANK → STANDARD."""
     _pick_question_type.counter = getattr(_pick_question_type, "counter", 0)
     slot = _pick_question_type.counter % 3
     _pick_question_type.counter += 1
@@ -169,7 +172,6 @@ def _pick_question_type(topic_id: str, course_id: str, seed_context: str) -> str
     if slot == 0:
         return "MCQ"
     elif slot == 1:
-        # Fill-blank only if topic is coding/syntax
         key = (topic_id or course_id or "").lower().replace("-", "_")
         is_coding = any(t in key for t in FILL_BLANK_TOPICS)
         return "FILL_BLANK" if is_coding else "STANDARD"
@@ -188,7 +190,6 @@ def generate_practice_problem(topic, difficulty="medium", course_id=None, topic_
     prompt_topic = topic_id if topic_id else topic
     q_type = _pick_question_type(topic_id, course_id, seed_context)
 
-    # ── Build prompt ──────────────────────────────────────────────────────────
     if file_context:
         from file_processor import truncate_context
         trimmed = truncate_context(file_context, max_chars=3000)
@@ -206,34 +207,29 @@ CORRECT_OPTION: [A, B, C, or D]
 EXPLANATION: [why that option is correct]
 HINT1: [gentle nudge]
 HINT2: [more specific]
-HINT3: [strong hint — nearly gives it away]"""
-
+HINT3: [strong hint]"""
         elif q_type == "FILL_BLANK":
-            type_instructions = """Generate a FILL-IN-THE-BLANK question using a code snippet or syntax example.
-Replace 1–3 key words/tokens with ___.
+            type_instructions = """Generate a FILL-IN-THE-BLANK question.
 FORMAT:
 TYPE: FILL_BLANK
 PROBLEM: [code or sentence with ___ blanks]
-BLANKS: [comma-separated answers for each blank in order]
-EXPLANATION: [why these are correct]
+BLANKS: [comma-separated answers in order]
+EXPLANATION: [why correct]
 HINT1: [gentle nudge]
 HINT2: [more specific]
 HINT3: [strong hint]"""
-
         else:
             type_instructions = """Generate a STANDARD coding or written question.
 FORMAT:
 TYPE: STANDARD
 PROBLEM: [clear question]
-EXAMPLE: [example if helpful, else omit]
 ANSWER: [correct answer]
 EXPLANATION: [explanation]
 HINT1: [gentle nudge]
 HINT2: [more specific]
 HINT3: [strong hint]"""
 
-        prompt = f"""Generate ONE {difficulty} difficulty practice problem based ONLY on the uploaded notes below.
-Do NOT use general course knowledge — use only what is in the notes.
+        prompt = f"""Generate ONE {difficulty} practice problem based ONLY on the uploaded notes below.
 
 UPLOADED NOTES:
 {trimmed}
@@ -243,55 +239,28 @@ DIFFICULTY: {difficulty}
 {type_instructions}
 
 Return ONLY the formatted response. No extra commentary."""
-
     else:
         base = get_problem_generation_prompt(prompt_topic, difficulty,
                                              course_id=course_id, topic_id=topic_id)
-
         if q_type == "MCQ":
             type_instructions = """Generate a MULTIPLE CHOICE question.
-Prepend your response with:
-TYPE: MCQ
-PROBLEM: [the question]
-OPTION_A: [option]
-OPTION_B: [option]
-OPTION_C: [option]
-OPTION_D: [option]
-CORRECT_OPTION: [A, B, C, or D]
-EXPLANATION: [why correct]
-HINT1: [gentle nudge]
-HINT2: [more specific]
-HINT3: [strong hint — nearly gives it away]
-Keep all other fields (ANSWER) blank or omit them."""
-
+Prepend with: TYPE: MCQ"""
         elif q_type == "FILL_BLANK":
-            type_instructions = """Generate a FILL-IN-THE-BLANK question using a code snippet or syntax statement.
-Replace 1–3 key tokens/keywords with ___.
-Prepend your response with:
-TYPE: FILL_BLANK
-PROBLEM: [code or sentence with ___ blanks]
-BLANKS: [comma-separated correct answers in order]
-EXPLANATION: [why correct]
-HINT1: [gentle nudge]
-HINT2: [more specific]
-HINT3: [strong hint]"""
-
+            type_instructions = """Generate a FILL-IN-THE-BLANK question.
+Prepend with: TYPE: FILL_BLANK"""
         else:
-            type_instructions = """Generate a STANDARD written or coding question.
-Prepend your response with:
-TYPE: STANDARD"""
-
+            type_instructions = """Generate a STANDARD question.
+Prepend with: TYPE: STANDARD"""
         prompt = base + f"\n\n{type_instructions}"
-
         if seed_context:
-            prompt += f"\n\nExtra context — student just learned:\n{seed_context[:400]}\nFocus the problem on these concepts."
+            prompt += f"\n\nExtra context: {seed_context[:400]}"
 
     for attempt in range(3):
         try:
-            response = _get_client().chat.completions.create(
+            response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are creating practice problems for CS students. Follow the format exactly."},
+                    {"role": "system", "content": "You create practice problems for CS students. Follow the format exactly."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=700, temperature=0.8
@@ -315,7 +284,6 @@ def parse_problem_response(text):
         "type": "STANDARD",
         "problem": "", "example": "", "answer": "", "explanation": "",
         "hints": [], "blanks": [],
-        # MCQ fields
         "options": {}, "correct_option": "",
     }
     lines = text.split('\n')
@@ -324,7 +292,6 @@ def parse_problem_response(text):
         line = line.strip()
         if not line:
             continue
-        upper = line.upper()
         if line.startswith("TYPE:"):
             val = line.replace("TYPE:", "").strip().upper()
             if "MCQ" in val:
@@ -334,27 +301,27 @@ def parse_problem_response(text):
             else:
                 data["type"] = "STANDARD"
         elif line.startswith("PROBLEM:"):
-            current = "problem"; data["problem"] = line.replace("PROBLEM:", "").strip()
+            current = "problem"
+            data["problem"] = line.replace("PROBLEM:", "").strip()
         elif line.startswith("BLANKS:"):
             data["blanks"] = [b.strip() for b in line.replace("BLANKS:", "").split(",")]
             current = None
         elif line.startswith("OPTION_A:"):
-            data["options"]["A"] = line.replace("OPTION_A:", "").strip(); current = None
+            data["options"]["A"] = line.replace("OPTION_A:", "").strip()
         elif line.startswith("OPTION_B:"):
-            data["options"]["B"] = line.replace("OPTION_B:", "").strip(); current = None
+            data["options"]["B"] = line.replace("OPTION_B:", "").strip()
         elif line.startswith("OPTION_C:"):
-            data["options"]["C"] = line.replace("OPTION_C:", "").strip(); current = None
+            data["options"]["C"] = line.replace("OPTION_C:", "").strip()
         elif line.startswith("OPTION_D:"):
-            data["options"]["D"] = line.replace("OPTION_D:", "").strip(); current = None
+            data["options"]["D"] = line.replace("OPTION_D:", "").strip()
         elif line.startswith("CORRECT_OPTION:"):
             data["correct_option"] = line.replace("CORRECT_OPTION:", "").strip().upper()[:1]
-            current = None
-        elif line.startswith("EXAMPLE:"):
-            current = "example"; data["example"] = line.replace("EXAMPLE:", "").strip()
         elif line.startswith("ANSWER:"):
-            current = "answer"; data["answer"] = line.replace("ANSWER:", "").strip()
+            current = "answer"
+            data["answer"] = line.replace("ANSWER:", "").strip()
         elif line.startswith("EXPLANATION:"):
-            current = "explanation"; data["explanation"] = line.replace("EXPLANATION:", "").strip()
+            current = "explanation"
+            data["explanation"] = line.replace("EXPLANATION:", "").strip()
         elif line.startswith("HINT"):
             hint_text = line.split(":", 1)[1].strip() if ":" in line else ""
             if hint_text:
@@ -362,29 +329,18 @@ def parse_problem_response(text):
             current = None
         elif current and line:
             data[current] += " " + line
-
     return data
 
 
 # ── ANSWER CHECKING ────────────────────────────────────────────────────────────
 
 def _fuzzy_match(correct: str, student: str) -> bool:
-    """
-    Flexible match: ignore case/whitespace, allow minor typos via
-    character-level similarity (Levenshtein-style ratio).
-    """
     c = correct.strip().lower()
     s = student.strip().lower()
-
-    # Exact after normalisation
     if c == s:
         return True
-
-    # Substring containment (handles extra words around the answer)
     if c in s or s in c:
         return True
-
-    # Simple character-overlap ratio for typo tolerance
     if len(c) == 0:
         return False
     longer = max(len(c), len(s))
@@ -392,26 +348,20 @@ def _fuzzy_match(correct: str, student: str) -> bool:
         return True
     matches = sum(ch in s for ch in c)
     ratio = matches / longer
-    return ratio >= 0.80  # 80% character overlap threshold
+    return ratio >= 0.80
 
 
 def check_fill_blank_answer(blanks_correct: list, blanks_student: list) -> dict:
-    """Check fill-in-the-blank answers with flexible matching."""
     if not blanks_correct:
         return {"is_correct": False, "feedback": "No answer key available.", "score": "0/0"}
-
     correct_count = 0
     feedback_parts = []
-
     for i, (correct, student) in enumerate(zip(blanks_correct, blanks_student)):
         if _fuzzy_match(correct, student):
             correct_count += 1
             feedback_parts.append(f"Blank {i+1}: ✅ Correct")
         else:
-            feedback_parts.append(
-                f"Blank {i+1}: ❌ You wrote '{student.strip()}' — correct answer is '{correct.strip()}'"
-            )
-
+            feedback_parts.append(f"Blank {i+1}: ❌ Correct answer is '{correct.strip()}'")
     all_correct = correct_count == len(blanks_correct)
     return {
         "is_correct": all_correct,
@@ -421,14 +371,11 @@ def check_fill_blank_answer(blanks_correct: list, blanks_student: list) -> dict:
 
 
 def check_mcq_answer(correct_option: str, student_option: str, explanation: str) -> dict:
-    """Check a multiple choice answer instantly (no API call needed)."""
     is_correct = correct_option.strip().upper() == student_option.strip().upper()
     return {
         "is_correct": is_correct,
         "score": "1/1" if is_correct else "0/1",
-        "feedback": explanation if explanation else (
-            "Correct! Well done." if is_correct else f"Not quite — the correct answer was {correct_option}."
-        ),
+        "feedback": explanation if explanation else ("Correct!" if is_correct else f"Correct answer was {correct_option}."),
     }
 
 
@@ -443,7 +390,7 @@ def check_student_answer(problem, student_answer, correct_answer, course_id=None
     prompt = ANSWER_CHECK_PROMPT.format(problem=problem, correct_answer=correct_answer,
                                         student_answer=student_answer, course_type=course_type)
     try:
-        response = _get_client().chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a patient coding tutor checking student work."},
@@ -474,39 +421,27 @@ def parse_answer_check(text):
 
 # ── FLASHCARD GENERATION ──────────────────────────────────────────────────────
 def generate_flashcards(course_id=None, topic_id=None, count=8, file_context=None):
-    """
-    Generate spaced-repetition flashcards.
-    Returns list of {"front": str, "back": str, "difficulty": str}
-    """
     from prompts import get_flashcard_generation_prompt
     log_student_action("Generate Flashcards", f"Count:{count}")
 
     if file_context:
         from file_processor import truncate_context
         trimmed = truncate_context(file_context, max_chars=3000)
-        prompt = f"""Generate exactly {count} flashcards for spaced repetition study.
-
-The student has uploaded their own notes. Generate cards ONLY from the content below.
+        prompt = f"""Generate exactly {count} flashcards from the notes below.
 
 UPLOADED NOTES:
 {trimmed}
 
-Rules:
-- Front: a question or term (max 15 words)
-- Back: the answer or definition (max 50 words)
-- Mix difficulty: easy, medium, hard
-- Focus on concepts the student is likely to be tested on
-
-Return ONLY a valid JSON array — no markdown, no backticks:
+Return ONLY a valid JSON array:
 [
-  {{"front": "Question here", "back": "Answer here", "difficulty": "easy/medium/hard"}}
+  {{"front": "Question", "back": "Answer", "difficulty": "easy/medium/hard"}}
 ]"""
     else:
         prompt = get_flashcard_generation_prompt(course_id, topic_id, count=count)
 
     for attempt in range(3):
         try:
-            response = _get_client().chat.completions.create(
+            response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You generate flashcards. Return only valid JSON arrays."},
@@ -542,7 +477,7 @@ def get_hint(problem, hint_level=1, pre_generated_hints=None):
     prompt = f"Problem: {problem}\n\n{HINT_LEVEL_PROMPTS.get(hint_level, HINT_LEVEL_PROMPTS[1])}"
     for attempt in range(2):
         try:
-            response = _get_client().chat.completions.create(
+            response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are giving hints to help a student."},
@@ -557,29 +492,6 @@ def get_hint(problem, hint_level=1, pre_generated_hints=None):
                 return f"❌ Error: {e}"
             time.sleep(1)
     return "❌ Could not generate hint."
-
-
-# # ── ASSIGNMENT HELPER ──────────────────────────────────────────────────────────
-# from assignment_helper import AssignmentHelper
-# assignment_helper = AssignmentHelper("Student")
-
-# def start_assignment_help(assignment_text):
-#     log_student_action("Start Assignment Help", f"Length:{len(assignment_text)}")
-#     breakdown = assignment_helper.analyze_assignment(assignment_text)
-#     if not breakdown:
-#         return {"error": "Could not analyze assignment"}
-#     initial = assignment_helper.get_guidance("I'm ready to start!")
-#     return {"breakdown": breakdown, "initial_guidance": initial,
-#             "total_steps": len(breakdown["steps"]), "difficulty": breakdown["difficulty_estimate"]}
-
-# def continue_assignment_help(student_message):
-#     guidance = assignment_helper.get_guidance(student_message)
-#     return {"guidance": guidance, "current_step": assignment_helper.current_step + 1,
-#             "steps_completed": len(assignment_helper.steps_completed),
-#             "is_complete": assignment_helper.is_assignment_complete()}
-
-# def reset_assignment_helper():
-#     assignment_helper.reset()
 
 
 # ── PROGRESS ───────────────────────────────────────────────────────────────────

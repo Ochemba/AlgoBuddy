@@ -1,7 +1,5 @@
 from openai import OpenAI
-import os
-import json
-import streamlit as st
+import os, json
 from dotenv import load_dotenv
 from prompts import (
     get_system_prompt, SCAFFOLDING_PROMPT,
@@ -9,37 +7,24 @@ from prompts import (
     ANSWER_CHECK_PROMPT, ASSIGNMENT_HELP_SYSTEM, ASSIGNMENT_BREAKDOWN_PROMPT,
 )
 from progress_tracker import ProgressTracker
-from learning_profile import LearningProfile, build_adaptation_prompt
 from validators import validate_topic, validate_difficulty, validate_user_message, validate_hint_level, validate_course, validate_persona, ValidationError
 from logger import log_info, log_error, log_warning, log_api_call, log_student_action
 import time
 
-# ============================================
-# GET API KEY - Works on Streamlit Cloud AND Local
-# ============================================
+load_dotenv()
 
-def get_api_key():
-    """Get OpenAI API key from st.secrets or environment."""
-    # Try Streamlit Cloud secrets first
+def _get_api_key():
     try:
-        api_key = st.secrets["OPENAI_API_KEY"]
-        if api_key:
-            return api_key
-    except (KeyError, AttributeError, FileNotFoundError):
+        import streamlit as st
+        key = st.secrets.get("OPENAI_API_KEY")
+        if key:
+            return key
+    except Exception:
         pass
-    
-    # Try environment variable for local development
-    load_dotenv()
-    api_key = os.getenv("OPENAI_API_KEY")
-    if api_key:
-        return api_key
-    
-    # If no key found, show error and stop
-    st.error("🔑 OpenAI API key not found! Please add it to your Streamlit Cloud secrets or .env file.")
-    st.stop()
+    return os.getenv("OPENAI_API_KEY")
 
-# Initialize OpenAI client
-client = OpenAI(api_key=get_api_key())
+def _get_client():
+    return OpenAI(api_key=_get_api_key())
 
 conversation_history = []
 api_call_count = 0
@@ -70,18 +55,11 @@ def optimize_conversation_history():
         return True
     return False
 
-# ============================================
-# REST OF YOUR CODE CONTINUES HERE
-# (get_tutor_response, generate_practice_problem, etc.)
-# ============================================
-# ... keep all your existing functions below ...
-
 # ── MAIN CHAT ─────────────────────────────────────────────────────────────────
 def get_tutor_response(message=None, use_scaffolding=False,
                        student_name="Student", course_id=None,
-                       topic_id=None, persona="default", assignment_mode=False, user_message=None,
-                       file_context: str = None, image_data: dict = None,
-                       learning_profile: LearningProfile | None = None):
+                       topic_id=None, persona="default", assignment_mode = False, user_message=None,
+                       file_context: str = None, image_data: dict = None):
     user_message = message or user_message or ""
     log_student_action("Asked Question", f"Length: {len(user_message)}")
     try:
@@ -103,12 +81,6 @@ def get_tutor_response(message=None, use_scaffolding=False,
             + "\n─── END OF UPLOADED MATERIAL ───"
         )
 
-    # ── Persona learning adaptation ──────────────────────────────────────────
-    if learning_profile:
-        adaptation = build_adaptation_prompt(learning_profile)
-        if adaptation:
-            system_prompt += "\n\n" + adaptation
-
     conversation_history.append({"role": "user", "content": user_message})
     trimmed = conversation_history[-20:]
 
@@ -124,7 +96,7 @@ def get_tutor_response(message=None, use_scaffolding=False,
 
     for attempt in range(3):
         try:
-            response = client.chat.completions.create(
+            response = _get_client().chat.completions.create(
                 model="gpt-4o" if image_data else "gpt-3.5-turbo",
                 messages=messages, max_tokens=400, temperature=0.7
             )
@@ -306,7 +278,7 @@ TYPE: STANDARD"""
 
     for attempt in range(3):
         try:
-            response = client.chat.completions.create(
+            response = _get_client().chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are creating practice problems for CS students. Follow the format exactly."},
@@ -461,7 +433,7 @@ def check_student_answer(problem, student_answer, correct_answer, course_id=None
     prompt = ANSWER_CHECK_PROMPT.format(problem=problem, correct_answer=correct_answer,
                                         student_answer=student_answer, course_type=course_type)
     try:
-        response = client.chat.completions.create(
+        response = _get_client().chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a patient coding tutor checking student work."},
@@ -524,7 +496,7 @@ Return ONLY a valid JSON array — no markdown, no backticks:
 
     for attempt in range(3):
         try:
-            response = client.chat.completions.create(
+            response = _get_client().chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You generate flashcards. Return only valid JSON arrays."},
@@ -560,7 +532,7 @@ def get_hint(problem, hint_level=1, pre_generated_hints=None):
     prompt = f"Problem: {problem}\n\n{HINT_LEVEL_PROMPTS.get(hint_level, HINT_LEVEL_PROMPTS[1])}"
     for attempt in range(2):
         try:
-            response = client.chat.completions.create(
+            response = _get_client().chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are giving hints to help a student."},

@@ -1,5 +1,7 @@
 from openai import OpenAI
-import os, json
+import os
+import json
+import streamlit as st
 from dotenv import load_dotenv
 from prompts import (
     get_system_prompt, SCAFFOLDING_PROMPT,
@@ -12,8 +14,26 @@ from validators import validate_topic, validate_difficulty, validate_user_messag
 from logger import log_info, log_error, log_warning, log_api_call, log_student_action
 import time
 
-load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# ============================================
+# FIX: Get API key from Streamlit secrets OR environment
+# ============================================
+def get_api_key():
+    """Get OpenAI API key from st.secrets or environment variable."""
+    try:
+        # Try Streamlit Cloud secrets first
+        return st.secrets["OPENAI_API_KEY"]
+    except (FileNotFoundError, KeyError, AttributeError):
+        # Fall back to environment variable for local development
+        load_dotenv()
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key:
+            return api_key
+        else:
+            st.error("🔑 OpenAI API key not found! Please add it to your secrets.")
+            st.stop()
+
+# Initialize client with the API key
+client = OpenAI(api_key=get_api_key())
 
 conversation_history = []
 api_call_count = 0
@@ -104,10 +124,14 @@ def get_tutor_response(message=None, use_scaffolding=False,
             err = str(e)
             log_error(f"Attempt {attempt+1} failed", e)
             if attempt == 2:
-                if "api_key" in err.lower(): return "❌ Error: Invalid API key."
-                elif "connection" in err.lower(): return "❌ Error: Cannot connect to OpenAI."
-                elif "rate_limit" in err.lower(): return "❌ Error: Rate limit hit."
-                else: return f"❌ Error: {err}"
+                if "api_key" in err.lower():
+                    return "❌ Error: Invalid API key. Please check your secrets configuration."
+                elif "connection" in err.lower():
+                    return "❌ Error: Cannot connect to OpenAI. Please check your internet."
+                elif "rate_limit" in err.lower():
+                    return "❌ Error: Rate limit hit. Please wait a moment and try again."
+                else:
+                    return f"❌ Error: {err}"
             time.sleep(2)
     return "❌ Error: Could not get response."
 

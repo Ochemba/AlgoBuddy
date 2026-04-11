@@ -1,26 +1,58 @@
 # supabase_client.py - Supabase client initialization
 import os
-import time
 import streamlit as st
-from functools import wraps
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-load_dotenv()
+# ============================================
+# FIX: Get Supabase credentials from Streamlit secrets OR environment
+# ============================================
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+def get_supabase_url():
+    """Get Supabase URL from st.secrets or environment variable."""
+    try:
+        # Try Streamlit Cloud secrets first
+        return st.secrets["SUPABASE_URL"]
+    except (FileNotFoundError, KeyError, AttributeError):
+        # Fall back to environment variable for local development
+        load_dotenv()
+        url = os.getenv("SUPABASE_URL")
+        if url:
+            return url
+        else:
+            st.error("🔌 Supabase URL not found! Please add it to your secrets.")
+            st.stop()
+
+def get_supabase_anon_key():
+    """Get Supabase anon key from st.secrets or environment variable."""
+    try:
+        # Try Streamlit Cloud secrets first
+        return st.secrets["SUPABASE_ANON_KEY"]
+    except (FileNotFoundError, KeyError, AttributeError):
+        # Fall back to environment variable for local development
+        load_dotenv()
+        key = os.getenv("SUPABASE_ANON_KEY")
+        if key:
+            return key
+        else:
+            st.error("🔑 Supabase anon key not found! Please add it to your secrets.")
+            st.stop()
+
+# Get credentials
+SUPABASE_URL = get_supabase_url()
+SUPABASE_ANON_KEY = get_supabase_anon_key()
 
 # Custom error messages
 ERROR_MESSAGES = {
-    "network": " No internet connection. Please check your network and try again.",
-    "timeout": "Connection timed out. Server is taking too long to respond.",
-    "ssl": " Secure connection failed. Please check your network.",
-    "auth": " Authentication failed. Please log in again.",
-    "permission": " You don't have permission to perform this action.",
-    "not_found": " Requested data not found.",
-    "rate_limit": " Too many requests. Please wait a moment.",
-    "connection": " Cannot connect to server. Please check your internet.",
+    "network": "No internet connection. Please check your network and try again.",
+    "timeout": "Connection timed out. Server taking too long to respond.",
+    "ssl": "Secure connection failed. Please check your network.",
+    "auth": "Authentication failed. Please log in again.",
+    "permission": "You don't have permission to perform this action.",
+    "not_found": "Requested data not found.",
+    "rate_limit": "Too many requests. Please wait a moment.",
+    "connection": "Cannot connect to server. Please check your internet.",
+    "getaddrinfo failed": "No internet connection. Please check your Wi-Fi or mobile data.",
 }
 
 def get_user_friendly_error(error: Exception) -> str:
@@ -32,51 +64,6 @@ def get_user_friendly_error(error: Exception) -> str:
             return message
     
     return f"❌ Something went wrong: {str(error)[:100]}"
-
-def retry_on_error(max_retries: int = 3, delay: float = 1.0, backoff: float = 2.0):
-    """
-    Decorator to retry a function on failure.
-    
-    Args:
-        max_retries: Maximum number of retry attempts
-        delay: Initial delay between retries in seconds
-        backoff: Multiplier for delay increase after each retry
-    """
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            current_delay = delay
-            last_error = None
-            
-            for attempt in range(max_retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    last_error = e
-                    error_str = str(e).lower()
-                    
-                    # Only retry on network-related errors
-                    is_network_error = any(keyword in error_str for keyword in [
-                        "network", "timeout", "connection", "ssl", "rate_limit"
-                    ])
-                    
-                    if not is_network_error or attempt == max_retries:
-                        # Don't retry on non-network errors or after last attempt
-                        break
-                    
-                    # Show retry message (only on first attempt)
-                    if attempt == 0:
-                        st.warning(f"⚠️ {get_user_friendly_error(e)} Retrying...")
-                    
-                    # Wait before retry
-                    time.sleep(current_delay)
-                    current_delay *= backoff  # Increase delay for next retry
-            
-            # All retries failed, show final error
-            st.error(get_user_friendly_error(last_error))
-            return None
-        return wrapper
-    return decorator
 
 def get_supabase_client() -> Client:
     """Get authenticated Supabase client with error handling."""
@@ -96,11 +83,12 @@ def check_connection() -> bool:
         client = get_supabase_client()
         if client is None:
             return False
+        # Simple query to test connection
         client.table("user_progress").select("count").limit(1).execute()
         return True
     except Exception as e:
         error_str = str(e).lower()
-        if "network" in error_str or "timeout" in error_str or "connection" in error_str:
+        if "network" in error_str or "timeout" in error_str or "connection" in error_str or "getaddrinfo" in error_str:
             st.warning("⚠️ You're offline. Progress will sync when reconnected.")
         return False
 

@@ -1,0 +1,105 @@
+# AI Tutor - Git Ignore File
+# Files and folders that should NOT be uploaded to Git/GitHub
+
+# ============================================
+# CRITICAL - API Keys & Secrets
+# ============================================
+.env
+*.env
+.env.*
+
+# ============================================
+# Python
+# ============================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ============================================
+# Project Specific
+# ============================================
+# Progress files (student data)
+*_progress.json
+progress.json
+*.json
+
+# Log files
+logs/
+*.log
+
+# Test outputs
+tests/__pycache__/
+test_progress.json
+
+# ============================================
+# IDE / Editor
+# ============================================
+# VS Code
+.vscode/
+.history/
+
+# PyCharm
+.idea/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# ============================================
+# Operating System
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# json files
+.json
+# ============================================
+# Temporary Files
+# ============================================
+*.tmp
+*.temp
+~*
+#  note
+app_patch_note.py
+check_auth_user.py
+check_auth.py
+check_current_profiles.py
+check_user.py
+cleanup_duplicates.py
+create_auth_users_fixed.py
+create_existing_users.py
+create_missing_profiles.py
+day1_practice.py
+day2_chatbot.py
+day2_tracker.py
+day2.py
+day3_test.py
+day4_test.py
+day4_testprogress.py
+migrate_chat_messages.py
+migrate_data.py
+rest_pass.py
+simple_migrate.py
+test_with_rls.py
+test_summary.py
+test_progress.py
+test_login_working.py
+test_login_simple.py
+test_login_now.py
+test_errors.py
+test_connection.py
+test_chat_rls.py

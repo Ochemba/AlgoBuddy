@@ -24,7 +24,17 @@ def _get_api_key():
     return os.getenv("OPENAI_API_KEY")
 
 def _get_client():
-    return OpenAI(api_key=_get_api_key())
+    try:
+        import httpx
+        # Create client without proxy to avoid the 'proxies' argument error
+        http_client = httpx.Client(proxies=None)
+        return OpenAI(
+            api_key=_get_api_key(),
+            http_client=http_client
+        )
+    except ImportError:
+        # Fallback if httpx is not available
+        return OpenAI(api_key=_get_api_key())
 
 conversation_history = []
 api_call_count = 0

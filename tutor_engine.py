@@ -15,24 +15,30 @@ from logger import log_info, log_error, log_warning, log_api_call, log_student_a
 import time
 
 # ============================================
-# FIX: Get API key from Streamlit secrets OR environment
+# GET API KEY - Works on Streamlit Cloud AND Local
 # ============================================
+
 def get_api_key():
-    """Get OpenAI API key from st.secrets or environment variable."""
+    """Get OpenAI API key from st.secrets or environment."""
+    # Try Streamlit Cloud secrets first
     try:
-        # Try Streamlit Cloud secrets first
-        return st.secrets["OPENAI_API_KEY"]
-    except (FileNotFoundError, KeyError, AttributeError):
-        # Fall back to environment variable for local development
-        load_dotenv()
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = st.secrets["OPENAI_API_KEY"]
         if api_key:
             return api_key
-        else:
-            st.error("🔑 OpenAI API key not found! Please add it to your secrets.")
-            st.stop()
+    except (KeyError, AttributeError, FileNotFoundError):
+        pass
+    
+    # Try environment variable for local development
+    load_dotenv()
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        return api_key
+    
+    # If no key found, show error and stop
+    st.error("🔑 OpenAI API key not found! Please add it to your Streamlit Cloud secrets or .env file.")
+    st.stop()
 
-# Initialize client with the API key
+# Initialize OpenAI client
 client = OpenAI(api_key=get_api_key())
 
 conversation_history = []
@@ -63,6 +69,12 @@ def optimize_conversation_history():
         conversation_history = conversation_history[-10:]
         return True
     return False
+
+# ============================================
+# REST OF YOUR CODE CONTINUES HERE
+# (get_tutor_response, generate_practice_problem, etc.)
+# ============================================
+# ... keep all your existing functions below ...
 
 # ── MAIN CHAT ─────────────────────────────────────────────────────────────────
 def get_tutor_response(message=None, use_scaffolding=False,
@@ -124,14 +136,10 @@ def get_tutor_response(message=None, use_scaffolding=False,
             err = str(e)
             log_error(f"Attempt {attempt+1} failed", e)
             if attempt == 2:
-                if "api_key" in err.lower():
-                    return "❌ Error: Invalid API key. Please check your secrets configuration."
-                elif "connection" in err.lower():
-                    return "❌ Error: Cannot connect to OpenAI. Please check your internet."
-                elif "rate_limit" in err.lower():
-                    return "❌ Error: Rate limit hit. Please wait a moment and try again."
-                else:
-                    return f"❌ Error: {err}"
+                if "api_key" in err.lower(): return "❌ Error: Invalid API key."
+                elif "connection" in err.lower(): return "❌ Error: Cannot connect to OpenAI."
+                elif "rate_limit" in err.lower(): return "❌ Error: Rate limit hit."
+                else: return f"❌ Error: {err}"
             time.sleep(2)
     return "❌ Error: Could not get response."
 

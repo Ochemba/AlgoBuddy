@@ -14,11 +14,10 @@ def new_session_id() -> str:
 
 
 def _get_user_id() -> str | None:
-    """Get current user ID."""
+    """Get current user ID from session state (set at login)."""
     try:
-        from auth import AuthManager
-        auth = AuthManager()
-        return auth.get_current_user_id()
+        import streamlit as st
+        return st.session_state.get("user_id")
     except Exception:
         return None
 

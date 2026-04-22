@@ -112,8 +112,11 @@ def check_connection() -> bool:
 _supabase = None
 
 def supabase():
-    """Get Supabase client instance (singleton)."""
+    """Get Supabase client instance (singleton). Never caches None."""
     global _supabase
     if _supabase is None:
-        _supabase = get_supabase_client()
+        client = get_supabase_client()
+        if client is not None:
+            _supabase = client
+        return client  # return even if None — don't cache failure
     return _supabase

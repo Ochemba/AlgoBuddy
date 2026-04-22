@@ -1631,19 +1631,22 @@ if not st.session_state.logged_in:
                         if user_id:
                             files = get_user_files(user_id)
                             for f in files:
+                                # Use .get() with fallbacks — column name varies by schema version
+                                fname = f.get("file_name") or f.get("name") or f.get("filename") or "file"
+                                ftype = f.get("file_type") or f.get("type") or "text"
                                 image_data = None
-                                if f["file_type"] == "image" and f.get("image_data"):
+                                if ftype == "image" and f.get("image_data"):
                                     image_data = {
                                         "base64": f["image_data"],
                                         "media_type": f.get("media_type", "image/png"),
-                                        "filename": f["file_name"]
+                                        "filename": fname
                                     }
                                 st.session_state.uploaded_files.append({
-                                    "name": f["file_name"],
-                                    "type": f["file_type"],
+                                    "name": fname,
+                                    "type": ftype,
                                     "content": f.get("content", ""),
                                     "image_data": image_data,
-                                    "file_id": f["id"]
+                                    "file_id": f.get("id")
                                 })
                         
                         st.session_state.auth_error = ""

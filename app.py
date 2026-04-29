@@ -1627,7 +1627,7 @@ if not st.session_state.logged_in:
             st.success(st.session_state.auth_success)
         
         if mode == "login":
-            st.markdown('<div class="auth-sub">Welcome back!!  Sign in with your email 🔥</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-sub">Welcome back — sign in with your email 🔥</div>', unsafe_allow_html=True)
             lu = st.text_input("Email", key="li_user", placeholder="you@example.com")
             lp = st.text_input("Password", key="li_pass", placeholder="••••••••", type="password")
             st.markdown(AUTH_BTN_STYLE, unsafe_allow_html=True)
@@ -1995,6 +1995,53 @@ else:
     with c4: st.markdown(AV, unsafe_allow_html=True)
 
 st.markdown('<div style="border-bottom:1px solid rgba(255,255,255,0.07);"></div>', unsafe_allow_html=True)
+
+# JS: force nav to fixed position AFTER Streamlit has rendered it
+# CSS position:fixed breaks Streamlit's flex layout during render;
+# JS applies it after render so flex row is already established
+_components.html("""<script>
+(function(){
+    function fixNav(){
+        try {
+            var doc = window.parent.document;
+            var nav = doc.querySelector('[data-testid="stHorizontalBlock"]');
+            if(!nav) return;
+            nav.style.setProperty('position','fixed','important');
+            nav.style.setProperty('top','0','important');
+            nav.style.setProperty('left','0','important');
+            nav.style.setProperty('right','0','important');
+            nav.style.setProperty('z-index','1000','important');
+            nav.style.setProperty('background','rgba(6,11,43,0.97)','important');
+            nav.style.setProperty('backdrop-filter','blur(18px)','important');
+            nav.style.setProperty('border-bottom','1px solid rgba(255,255,255,0.07)','important');
+            nav.style.setProperty('padding','0.55rem 1rem','important');
+            nav.style.setProperty('display','flex','important');
+            nav.style.setProperty('flex-direction','row','important');
+            nav.style.setProperty('flex-wrap','nowrap','important');
+            nav.style.setProperty('align-items','center','important');
+            // Ensure columns stay in row
+            var cols = nav.querySelectorAll(':scope > [data-testid="stColumn"]');
+            cols.forEach(function(col, i){
+                if(i === 0){
+                    col.style.setProperty('flex','1 1 auto','important');
+                    col.style.setProperty('min-width','0','important');
+                } else {
+                    col.style.setProperty('flex','0 0 auto','important');
+                    col.style.setProperty('width','auto','important');
+                    col.style.setProperty('min-width','0','important');
+                }
+            });
+            // Push content below fixed nav
+            var mainBlock = doc.querySelector('[data-testid="stMain"]');
+            if(mainBlock) mainBlock.style.setProperty('padding-top','56px','important');
+        } catch(e){}
+    }
+    fixNav();
+    setTimeout(fixNav, 100);
+    setTimeout(fixNav, 400);
+    new MutationObserver(fixNav).observe(document.body, {childList:true, subtree:true});
+})();
+</script>""", height=0)
 
 # ============================================
 # HOME VIEW

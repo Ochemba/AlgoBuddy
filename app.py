@@ -183,18 +183,14 @@ section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-
     backdrop-filter: blur(18px) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
     padding: 0.55rem 1rem !important;
-    position: fixed !important;
+    position: sticky !important;
     top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
     z-index: 500 !important;
     margin-bottom: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
     align-items: center !important;
     flex-wrap: nowrap !important;
-}
-/* Push page content below fixed nav */
-[data-testid="stMain"] > div {
-    padding-top: 52px !important;
 }
 
 @media (max-width: 768px) {
@@ -1631,7 +1627,7 @@ if not st.session_state.logged_in:
             st.success(st.session_state.auth_success)
         
         if mode == "login":
-            st.markdown('<div class="auth-sub">Welcome back!! Sign in with your email 🔥</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-sub">Welcome back!!  Sign in with your email 🔥</div>', unsafe_allow_html=True)
             lu = st.text_input("Email", key="li_user", placeholder="you@example.com")
             lp = st.text_input("Password", key="li_pass", placeholder="••••••••", type="password")
             st.markdown(AUTH_BTN_STYLE, unsafe_allow_html=True)
@@ -1688,7 +1684,7 @@ if not st.session_state.logged_in:
             st.page_link("pages/signup.py", label="No account? Create one →")
         
         else:
-            st.markdown('<div class="auth-sub">Join AlgoBuddy. Your AI-powered CS tutor 🎓</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-sub">Join AlgoBuddy — your AI-powered CS tutor 🎓</div>', unsafe_allow_html=True)
             su_email = st.text_input("Email", key="su_email", placeholder="you@example.com")
             su_name = st.text_input("Your name", key="su_name", placeholder="e.g. Obianuju")
             su_user = st.text_input("Choose a username", key="su_user", placeholder="e.g. uju123")

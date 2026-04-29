@@ -183,12 +183,18 @@ section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-
     backdrop-filter: blur(18px) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
     padding: 0.55rem 1rem !important;
-    position: sticky !important;
+    position: fixed !important;
     top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
     z-index: 500 !important;
     margin-bottom: 0 !important;
     align-items: center !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
+}
+/* Push page content below fixed nav */
+[data-testid="stMain"] > div {
+    padding-top: 52px !important;
 }
 
 @media (max-width: 768px) {
@@ -219,6 +225,19 @@ section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-
 [data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] [data-testid="stColumn"] .element-container {
     margin: 0 !important;
     width: 100%;
+}
+/* Logo column: takes all available space */
+section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-type [data-testid="stColumn"]:first-child,
+[data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:first-child {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+/* Icon/action columns (2nd onwards): natural button width only */
+section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-type [data-testid="stColumn"]:nth-child(n+2),
+[data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:nth-child(n+2) {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
 }
 
 /* Pill buttons */
@@ -1340,13 +1359,13 @@ html body [role="option"][aria-selected="true"] * {
     color: #EEF2FF !important;
 }
 
-/* Additional responsive fixes */
+/* Additional responsive fixes — wrap content blocks but NOT the nav */
 @media (max-width: 768px) {
-    [data-testid="stHorizontalBlock"] {
+    [data-testid="stHorizontalBlock"]:not(:first-of-type) {
         flex-wrap: wrap !important;
     }
     
-    [data-testid="stHorizontalBlock"] [data-testid="stColumn"] {
+    [data-testid="stHorizontalBlock"]:not(:first-of-type) [data-testid="stColumn"] {
         min-width: auto !important;
         flex: 1 1 auto !important;
     }
@@ -1368,14 +1387,22 @@ html body [role="option"][aria-selected="true"] * {
 @media (max-width: 768px) {
     section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-type,
     [data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] {
-        flex-wrap: wrap !important;
-        justify-content: center !important;
-        gap: 0.6rem 0.8rem !important;
-        padding: 0.5rem 0.8rem !important;
+        flex-wrap: nowrap !important;
+        justify-content: space-between !important;
+        gap: 0 !important;
+        padding: 0.45rem 0.75rem !important;
     }
 
-    section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-type [data-testid="stColumn"],
-    [data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] [data-testid="stColumn"] {
+    /* Logo column: takes all remaining space on mobile too */
+    section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-type [data-testid="stColumn"]:first-child,
+    [data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:first-child {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
+    }
+    /* Icon/action columns: natural size only, never grow */
+    section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-type [data-testid="stColumn"]:nth-child(n+2),
+    [data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:nth-child(n+2) {
         flex: 0 0 auto !important;
         width: auto !important;
         min-width: 0 !important;
@@ -1604,7 +1631,7 @@ if not st.session_state.logged_in:
             st.success(st.session_state.auth_success)
         
         if mode == "login":
-            st.markdown('<div class="auth-sub">Welcome back — sign in with your email 🔥</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-sub">Welcome back!! Sign in with your email 🔥</div>', unsafe_allow_html=True)
             lu = st.text_input("Email", key="li_user", placeholder="you@example.com")
             lp = st.text_input("Password", key="li_pass", placeholder="••••••••", type="password")
             st.markdown(AUTH_BTN_STYLE, unsafe_allow_html=True)
@@ -1661,7 +1688,7 @@ if not st.session_state.logged_in:
             st.page_link("pages/signup.py", label="No account? Create one →")
         
         else:
-            st.markdown('<div class="auth-sub">Join AlgoBuddy — your AI-powered CS tutor 🎓</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-sub">Join AlgoBuddy. Your AI-powered CS tutor 🎓</div>', unsafe_allow_html=True)
             su_email = st.text_input("Email", key="su_email", placeholder="you@example.com")
             su_name = st.text_input("Your name", key="su_name", placeholder="e.g. Obianuju")
             su_user = st.text_input("Choose a username", key="su_user", placeholder="e.g. uju123")
@@ -1683,10 +1710,21 @@ if not st.session_state.logged_in:
                     st.session_state.auth_error = "Password must be at least 6 characters."
                     st.rerun()
                 else:
+                    # Pre-check for duplicate email before calling Supabase
+                    # (Supabase returns success for duplicate emails when confirmation is on)
+                    try:
+                        from supabase_client import supabase as _sb
+                        _existing = _sb().table("users").select("id").eq("email", su_email.strip().lower()).execute()
+                        if _existing.data:
+                            st.session_state.auth_error = "An account with this email already exists. Please sign in."
+                            st.rerun()
+                    except Exception:
+                        pass  # If check fails, let signup proceed normally
+
                     ok, msg = _auth.signup(su_email, su_user, su_name, su_pass)
                     if ok:
                         st.session_state.auth_mode = "login"
-                        st.session_state.auth_success = f"Account created! Please check your email to confirm, then sign in."
+                        st.session_state.auth_success = "Account created! Please check your email to confirm, then sign in."
                         st.session_state.auth_error = ""
                         st.rerun()
                     else:
@@ -1928,7 +1966,7 @@ def _settings_popover():
 # NAVIGATION BAR
 # ============================================
 if _in_chat:
-    c1, _, c2, c3, c4, c5, c6 = st.columns([2, 4.7, 0.5, 0.5, 0.5, 1.3, 0.5])
+    c1, c2, c3, c4, c5, c6 = st.columns([8, 0.6, 0.6, 0.6, 1.5, 0.6])
     with c1: st.markdown(LOGO, unsafe_allow_html=True)
     with c2:
         st.markdown('<div class="ab-pill-btn">', unsafe_allow_html=True)
@@ -1945,12 +1983,12 @@ if _in_chat:
     with c5:
         pn = get_personas().get(st.session_state.persona, get_personas()["default"])["display_name"]
         st.markdown(
-            f'<div style="display:flex;align-items:center;justify-content:flex-end;padding-right:0.3rem;"><span style="font-size:0.74rem;color:var(--teal);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{pn}</span></div>',
+            f'<div style="display:flex;align-items:center;justify-content:flex-end;padding-right:0.3rem;"><span style="font-size:0.74rem;color:var(--teal);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">{pn}</span></div>',
             unsafe_allow_html=True,
         )
     with c6: st.markdown(AV, unsafe_allow_html=True)
 else:
-    c1, _, c2, c3, c4 = st.columns([2, 6.5, 0.5, 0.5, 0.5])
+    c1, c2, c3, c4 = st.columns([8, 0.6, 0.6, 0.6])
     with c1: st.markdown(LOGO, unsafe_allow_html=True)
     with c2:
         with st.popover("📚", help="Courses & Topics"):

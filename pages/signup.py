@@ -170,7 +170,7 @@ with auth_col:
     if st.session_state.auth_success:
         st.success(st.session_state.auth_success)
 
-    st.markdown('<div class="auth-sub">Join AlgoBuddy — your AI-powered CS tutor 🎓</div>', unsafe_allow_html=True)
+    st.markdown('<div class="auth-sub">Join AlgoBuddy. Your AI-powered CS tutor 🎓</div>', unsafe_allow_html=True)
 
     # Define each field ONCE - no duplicates
     su_email = st.text_input("Email address", key="su_email", placeholder="you@example.com")

@@ -326,10 +326,10 @@ BADGES_TIER2 = [
 
 # XP awards
 XP_AWARDS = {
-    "problem_correct": 10,
+    "problem_correct": 6,
     "hint_free_correct": 5,
-    "flashcard_review": 8,
-    "chat_session": 15,
+    "flashcard_review": 2,
+    "chat_session": 10,
     "notes_upload": 10,
     "streak_bonus": 7,
 }

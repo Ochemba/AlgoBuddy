@@ -187,9 +187,9 @@ section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-
     top: 0 !important;
     z-index: 500 !important;
     margin-bottom: 0 !important;
+    align-items: center !important;
     display: flex !important;
     flex-direction: row !important;
-    align-items: center !important;
     flex-wrap: nowrap !important;
 }
 
@@ -221,19 +221,6 @@ section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-
 [data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] [data-testid="stColumn"] .element-container {
     margin: 0 !important;
     width: 100%;
-}
-/* Logo column: takes all available space */
-section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-type [data-testid="stColumn"]:first-child,
-[data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:first-child {
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-}
-/* Icon/action columns (2nd onwards): natural button width only */
-section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-type [data-testid="stColumn"]:nth-child(n+2),
-[data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:nth-child(n+2) {
-    flex: 0 0 auto !important;
-    min-width: 0 !important;
-    width: auto !important;
 }
 
 /* Pill buttons */
@@ -1355,12 +1342,11 @@ html body [role="option"][aria-selected="true"] * {
     color: #EEF2FF !important;
 }
 
-/* Additional responsive fixes — wrap content blocks but NOT the nav */
+/* Additional responsive fixes — content blocks only, not nav */
 @media (max-width: 768px) {
     [data-testid="stHorizontalBlock"]:not(:first-of-type) {
         flex-wrap: wrap !important;
     }
-    
     [data-testid="stHorizontalBlock"]:not(:first-of-type) [data-testid="stColumn"] {
         min-width: auto !important;
         flex: 1 1 auto !important;
@@ -1384,19 +1370,22 @@ html body [role="option"][aria-selected="true"] * {
     section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-type,
     [data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] {
         flex-wrap: nowrap !important;
+        flex-direction: row !important;
         justify-content: space-between !important;
         gap: 0 !important;
         padding: 0.45rem 0.75rem !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
-    /* Logo column: takes all remaining space on mobile too */
+    /* Logo column grows, icon columns stay compact */
     section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-type [data-testid="stColumn"]:first-child,
     [data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:first-child {
         flex: 1 1 auto !important;
         min-width: 0 !important;
         overflow: hidden !important;
     }
-    /* Icon/action columns: natural size only, never grow */
+
     section.main > div > div:first-child [data-testid="stHorizontalBlock"]:first-of-type [data-testid="stColumn"]:nth-child(n+2),
     [data-testid="stMain"] > div > div > div:first-child [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:nth-child(n+2) {
         flex: 0 0 auto !important;
@@ -1544,42 +1533,9 @@ AUTH_BTN_STYLE = """<style>
     width:auto!important;min-width:160px!important;max-width:260px!important;padding:0 2rem!important;
     box-shadow:0 4px 20px rgba(6,182,212,0.35)!important;display:block!important;margin:0 auto!important;
 }
-/* Force white text on page links - using !important on everything */
-[data-testid="stPageLink-Link"],
-[data-testid="stPageLink-Link"]:link,
-[data-testid="stPageLink-Link"]:visited,
-[data-testid="stPageLink-Link"] span,
-[data-testid="stPageLink-Link"] p,
-.stPageLink-Link,
-.stPageLink-Link span,
-div[data-testid="stPageLink"] a,
-div[data-testid="stPageLink"] a:link,
-div[data-testid="stPageLink"] a:visited,
-div[data-testid="stPageLink"] a span {
-    color: #EEF2FF !important;
-    -webkit-text-fill-color: #EEF2FF !important;
-    background-color: transparent !important;
-    background: transparent !important;
-}
-
-[data-testid="stPageLink-Link"]:hover,
-[data-testid="stPageLink-Link"]:hover *,
-div[data-testid="stPageLink"] a:hover,
-div[data-testid="stPageLink"] a:hover span {
-    color: #06B6D4 !important;
-    -webkit-text-fill-color: #06B6D4 !important;
-}
-
-/* Target the specific paragraph inside the link */
-[data-testid="stPageLink"] p {
-    color: #EEF2FF !important;
-    -webkit-text-fill-color: #EEF2FF !important;
-}
-
-[data-testid="stPageLink"]:hover p {
-    color: #06B6D4 !important;
-    -webkit-text-fill-color: #06B6D4 !important;
-}
+[data-testid="stPageLink-Link"],[data-testid="stPageLink-Link"] *{color:#EEF2FF!important;-webkit-text-fill-color:#EEF2FF!important;font-weight:500!important;font-size:0.85rem!important;text-decoration:underline!important;text-underline-offset:3px!important;background:none!important;-webkit-background-clip:unset!important;background-clip:unset!important;}
+[data-testid="stPageLink-Link"]:hover,[data-testid="stPageLink-Link"]:hover *{color:#06B6D4!important;-webkit-text-fill-color:#06B6D4!important;}
+[data-testid="stPageLink"]{display:flex!important;justify-content:center!important;margin-top:0.6rem!important;}
 </style>"""
 
 # ============================================
@@ -1588,7 +1544,7 @@ div[data-testid="stPageLink"] a:hover span {
 for k, v in {
     "logged_in": False, 
     "username": None, 
-    "user_email": None,
+    "user_email": None,  # ADD THIS LINE
     "messages": [], 
     "student_name": "Student",
     "active_course": None, 
@@ -1637,41 +1593,19 @@ if not st.session_state.logged_in:
                     ok, msg, ud = _auth.login(lu, lp)
                     if ok:
                         st.session_state.logged_in = True
+                        # Store email separately
                         st.session_state.user_email = lu.strip().lower()
+                        # Get username from metadata (NOT the email)
                         username_from_meta = ud.get("username", "")
                         if not username_from_meta or "@" in username_from_meta:
                             username_from_meta = lu.strip().split('@')[0]
                         st.session_state.username = username_from_meta
+                        # Get display name
                         display_name = ud.get("display_name", "")
                         if not display_name or "@" in str(display_name):
                             display_name = username_from_meta
                         st.session_state.student_name = display_name
                         st.session_state.user_id = ud.get("id")
-                        
-                        # Load user's previously uploaded files from Supabase
-                        from file_processor import get_user_files
-                        user_id = ud.get("id")
-                        if user_id:
-                            files = get_user_files(user_id)
-                            for f in files:
-                                # Use .get() with fallbacks — column name varies by schema version
-                                fname = f.get("file_name") or f.get("name") or f.get("filename") or "file"
-                                ftype = f.get("file_type") or f.get("type") or "text"
-                                image_data = None
-                                if ftype == "image" and f.get("image_data"):
-                                    image_data = {
-                                        "base64": f["image_data"],
-                                        "media_type": f.get("media_type", "image/png"),
-                                        "filename": fname
-                                    }
-                                st.session_state.uploaded_files.append({
-                                    "name": fname,
-                                    "type": ftype,
-                                    "content": f.get("content", ""),
-                                    "image_data": image_data,
-                                    "file_id": f.get("id")
-                                })
-                        
                         st.session_state.auth_error = ""
                         st.rerun()
                     else:
@@ -1681,9 +1615,9 @@ if not st.session_state.logged_in:
                     st.session_state.auth_error = "Please fill in both fields."
                     st.rerun()
             
-            st.page_link("pages/signup.py", label="No account? Create one →")
+            st.page_link("pages/signup.py", label="Don't have an account? Create one →")
         
-        else:
+        else:  # signup mode
             st.markdown('<div class="auth-sub">Join AlgoBuddy — your AI-powered CS tutor 🎓</div>', unsafe_allow_html=True)
             su_email = st.text_input("Email", key="su_email", placeholder="you@example.com")
             su_name = st.text_input("Your name", key="su_name", placeholder="e.g. Obianuju")
@@ -1706,21 +1640,11 @@ if not st.session_state.logged_in:
                     st.session_state.auth_error = "Password must be at least 6 characters."
                     st.rerun()
                 else:
-                    # Pre-check for duplicate email before calling Supabase
-                    # (Supabase returns success for duplicate emails when confirmation is on)
-                    try:
-                        from supabase_client import supabase as _sb
-                        _existing = _sb().table("users").select("id").eq("email", su_email.strip().lower()).execute()
-                        if _existing.data:
-                            st.session_state.auth_error = "An account with this email already exists. Please sign in."
-                            st.rerun()
-                    except Exception:
-                        pass  # If check fails, let signup proceed normally
-
+                    # Pass email, username, display_name, password
                     ok, msg = _auth.signup(su_email, su_user, su_name, su_pass)
                     if ok:
                         st.session_state.auth_mode = "login"
-                        st.session_state.auth_success = "Account created! Please check your email to confirm, then sign in."
+                        st.session_state.auth_success = f"Account created! Please check your email to confirm, then sign in."
                         st.session_state.auth_error = ""
                         st.rerun()
                     else:
@@ -1730,7 +1654,6 @@ if not st.session_state.logged_in:
             st.page_link("app.py", label="Already have an account? Sign in →")
     
     st.stop()
-
 # ============================================
 # INITIALIZE TRACKER
 # ============================================
@@ -1962,43 +1885,41 @@ def _settings_popover():
 # NAVIGATION BAR
 # ============================================
 if _in_chat:
-    c1, c2, c3, c4, c5, c6 = st.columns([8, 0.6, 0.6, 0.6, 1.5, 0.6])
+    c1, c_h, c_bk, c_set, c_pn, c_av = st.columns([4, 0.6, 0.6, 0.6, 1.5, 0.5])
     with c1: st.markdown(LOGO, unsafe_allow_html=True)
-    with c2:
+    with c_h:
         st.markdown('<div class="ab-pill-btn">', unsafe_allow_html=True)
-        if st.button("🏠", key="nh", use_container_width=True, help="Home"):
+        if st.button("🏠", key="nh", use_container_width=False, help="Home"):
             _save()
             go("home")
         st.markdown('</div>', unsafe_allow_html=True)
-    with c3:
+    with c_bk:
         with st.popover("📚", help="Courses & Topics"):
             _courses_popover()
-    with c4:
+    with c_set:
         with st.popover("⚙️", help="Settings"):
             _settings_popover()
-    with c5:
+    with c_pn:
         pn = get_personas().get(st.session_state.persona, get_personas()["default"])["display_name"]
         st.markdown(
-            f'<div style="display:flex;align-items:center;justify-content:flex-end;padding-right:0.3rem;"><span style="font-size:0.74rem;color:var(--teal);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">{pn}</span></div>',
+            f'<div style="display:flex;align-items:center;justify-content:flex-end;padding-right:0.3rem;"><span style="font-size:0.74rem;color:var(--teal);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px;">{pn}</span></div>',
             unsafe_allow_html=True,
         )
-    with c6: st.markdown(AV, unsafe_allow_html=True)
+    with c_av: st.markdown(AV, unsafe_allow_html=True)
 else:
-    c1, c2, c3, c4 = st.columns([8, 0.6, 0.6, 0.6])
+    c1, c_bk, c_set, c_av = st.columns([4, 0.6, 0.6, 0.5])
     with c1: st.markdown(LOGO, unsafe_allow_html=True)
-    with c2:
+    with c_bk:
         with st.popover("📚", help="Courses & Topics"):
             _courses_popover()
-    with c3:
+    with c_set:
         with st.popover("⚙️", help="Settings"):
             _settings_popover()
-    with c4: st.markdown(AV, unsafe_allow_html=True)
+    with c_av: st.markdown(AV, unsafe_allow_html=True)
 
 st.markdown('<div style="border-bottom:1px solid rgba(255,255,255,0.07);"></div>', unsafe_allow_html=True)
 
-# JS: force nav to fixed position AFTER Streamlit has rendered it
-# CSS position:fixed breaks Streamlit's flex layout during render;
-# JS applies it after render so flex row is already established
+# JS: fix nav to stay on scroll and fill full width
 _components.html("""<script>
 (function(){
     function fixNav(){
@@ -2010,16 +1931,17 @@ _components.html("""<script>
             nav.style.setProperty('top','0','important');
             nav.style.setProperty('left','0','important');
             nav.style.setProperty('right','0','important');
+            nav.style.setProperty('width','100%','important');
+            nav.style.setProperty('box-sizing','border-box','important');
             nav.style.setProperty('z-index','1000','important');
             nav.style.setProperty('background','rgba(6,11,43,0.97)','important');
             nav.style.setProperty('backdrop-filter','blur(18px)','important');
             nav.style.setProperty('border-bottom','1px solid rgba(255,255,255,0.07)','important');
-            nav.style.setProperty('padding','0.55rem 1rem','important');
+            nav.style.setProperty('padding','0.45rem 1rem','important');
             nav.style.setProperty('display','flex','important');
             nav.style.setProperty('flex-direction','row','important');
             nav.style.setProperty('flex-wrap','nowrap','important');
             nav.style.setProperty('align-items','center','important');
-            // Ensure columns stay in row
             var cols = nav.querySelectorAll(':scope > [data-testid="stColumn"]');
             cols.forEach(function(col, i){
                 if(i === 0){
@@ -2031,9 +1953,8 @@ _components.html("""<script>
                     col.style.setProperty('min-width','0','important');
                 }
             });
-            // Push content below fixed nav
-            var mainBlock = doc.querySelector('[data-testid="stMain"]');
-            if(mainBlock) mainBlock.style.setProperty('padding-top','56px','important');
+            var main = doc.querySelector('[data-testid="stMain"]');
+            if(main) main.style.setProperty('padding-top','52px','important');
         } catch(e){}
     }
     fixNav();
@@ -2059,8 +1980,8 @@ if st.session_state.view == "home":
     )
     CARDS = [
         ("💬", "Chat with AlgoBuddy", "Ask questions, get explanations and talk through concepts naturally", "Click to start", "go_chat", "Open Chat"),
-        ("🧮", "Practice Mode", "AI-generated problems with progressive hints and instant feedback", "Click to open", "go_prac", "Open Practice"),
-        ("📈", "My Progress", "Track accuracy, streaks, weak topics and XP earned", "Click to open", "go_prog", "My Progress"),
+        ("💪", "Practice Mode", "AI-generated problems with progressive hints and instant feedback", "Click to open", "go_prac", "Open Practice"),
+        ("📊", "My Progress", "Track accuracy, streaks, weak topics and XP earned", "Click to open", "go_prog", "My Progress"),
         ("🃏", "Flashcards", "Spaced repetition cards — AI-generated for every topic", "Click to open", "go_flash", "Flashcards"),
     ]
     _, mid, _ = st.columns([1, 8, 1])
@@ -2085,9 +2006,10 @@ if st.session_state.view == "home":
                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================
-# CHAT VIEW
+# CHAT VIEW (KEEP YOUR EXISTING CHAT CODE)
 # ============================================
 elif st.session_state.view == "chat":
+    # [YOUR EXISTING CHAT CODE - KEEP AS IS]
     sname = st.session_state.student_name
     ini = (sname[0] if sname else "S").upper()
     bot = AVATAR.get(st.session_state.persona, "🤖")
@@ -2116,9 +2038,6 @@ elif st.session_state.view == "chat":
             "tony_stark": f"Hey {display_name} lets get brilliant.",
             "yoda": f"Welcome {display_name}. Ready to learn, are you?",
             "chill_senior": f"Hey {display_name}! What are we tackling today?",
-            "osuofia": f"Nnem Kedu {display_name}. Gịnị ka anyị na-amụ today?",
-            "death": f"Gatoo {display_name}. its been a whileee",
-            "kanayo": f"{display_name} are ready to make sacrifices?",
             "default": f"Hey {display_name}! What would you like to learn?",
         }.get(st.session_state.persona, f"Hey {display_name}!")
         focus = (
@@ -2193,13 +2112,6 @@ elif st.session_state.view == "chat":
                 with frow2:
                     st.markdown('<div class="remove-file-btn">', unsafe_allow_html=True)
                     if st.button("✕", key=f"rmf_{fi}", use_container_width=True):
-                        # Delete from Supabase if it has a file_id
-                        if f.get("file_id"):
-                            from file_processor import delete_file_from_db
-                            user_id = st.session_state.get("user_id")
-                            if user_id:
-                                delete_file_from_db(user_id, f["file_id"])
-                        
                         st.session_state.uploaded_files.pop(fi)
                         if not any(x["type"] == "image" for x in st.session_state.uploaded_files):
                             st.session_state.pending_image = False
@@ -2211,17 +2123,13 @@ elif st.session_state.view == "chat":
             )
             if up and up.name not in [x["name"] for x in st.session_state.uploaded_files]:
                 with st.spinner(f"Reading {up.name}..."):
-                    user_id = st.session_state.get("user_id")
-                    res = process_upload(up, user_id=user_id)
+                    res = process_upload(up)
                 if res.get("error"):
                     st.error(res["error"])
                 else:
                     st.session_state.uploaded_files.append({
-                        "name": res["filename"], 
-                        "type": res["type"],
-                        "content": res.get("content", ""), 
-                        "image_data": res.get("image_data"),
-                        "file_id": res.get("file_id")
+                        "name": res["filename"], "type": res["type"],
+                        "content": res.get("content", ""), "image_data": res.get("image_data"),
                     })
                     if res["type"] == "image":
                         st.session_state.pending_image = True
@@ -2281,9 +2189,6 @@ elif st.session_state.view == "chat":
         st.session_state.thinking = True
         st.session_state.cin_key += 1
         st.session_state.tracker._update_streak()
-        st.session_state.tracker.save_to_file(_sf)
-         # ✅ ADD THIS HERE
-        st.session_state.tracker.record_study_session()
         st.session_state.tracker.save_to_file(_sf)
         st.rerun()
 

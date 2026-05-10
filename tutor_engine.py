@@ -63,10 +63,13 @@ def get_tutor_response(message=None, use_scaffolding=False,
     if file_context and file_context.strip():
         from file_processor import truncate_context
         system_prompt += (
-            "\n\n─── UPLOADED STUDY MATERIAL ───\n"
-            "The student has uploaded their own notes. Base your explanations and examples on this content.\n\n"
-            + truncate_context(file_context)
-            + "\n─── END OF UPLOADED MATERIAL ───"
+            "\n\n─── UPLOADED DOCUMENTS ───\n"
+            "The student has uploaded one or more documents. These may contain questions to answer, "
+            "notes to study from, or assignment material. Read ALL documents carefully. "
+            "When the student asks about a specific document by name, refer to that document's content. "
+            "When asked to answer questions, find and answer them from the relevant document.\n\n"
+            + truncate_context(file_context, max_chars=12000)
+            + "\n─── END OF UPLOADED DOCUMENTS ───"
         )
 
     conversation_history.append({"role": "user", "content": user_message})

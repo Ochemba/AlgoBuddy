@@ -63,13 +63,10 @@ def get_tutor_response(message=None, use_scaffolding=False,
     if file_context and file_context.strip():
         from file_processor import truncate_context
         system_prompt += (
-            "\n\n─── UPLOADED DOCUMENTS ───\n"
-            "The student has uploaded one or more documents. These may contain questions to answer, "
-            "notes to study from, or assignment material. Read ALL documents carefully. "
-            "When the student asks about a specific document by name, refer to that document's content. "
-            "When asked to answer questions, find and answer them from the relevant document.\n\n"
-            + truncate_context(file_context, max_chars=12000)
-            + "\n─── END OF UPLOADED DOCUMENTS ───"
+            "\n\n─── UPLOADED STUDY MATERIAL ───\n"
+            "The student has uploaded their own notes. Base your explanations and examples on this content.\n\n"
+            + truncate_context(file_context)
+            + "\n─── END OF UPLOADED MATERIAL ───"
         )
 
     conversation_history.append({"role": "user", "content": user_message})
@@ -88,7 +85,7 @@ def get_tutor_response(message=None, use_scaffolding=False,
     for attempt in range(3):
         try:
             response = client.chat.completions.create(
-                model="gpt-4o" if image_data else "gpt-4o-mini",
+                model="gpt-4o" if image_data else "gpt-3.5-turbo",
                 messages=messages, max_tokens=400, temperature=0.7
             )
             track_api_call(response)
@@ -570,3 +567,47 @@ def get_progress_report(): return current_tracker.get_stats_summary()
 def save_progress(): current_tracker.save_to_file("progress.json")
 def load_progress(): return current_tracker.load_from_file("progress.json")
 def get_session_summary(): return current_tracker.format_session_summary()
+
+
+# ── TTS AUDIO ─────────────────────────────────────────────────────────────────
+
+# Persona → OpenAI TTS voice mapping
+PERSONA_VOICES = {
+    "batman":       "onyx",    # deep, serious
+    "hermione":     "nova",    # clear, articulate
+    "tony_stark":   "echo",    # confident
+    "yoda":         "fable",   # warm, storytelling
+    "chill_senior": "alloy",   # relaxed
+    "osuofia":      "shimmer", # expressive
+    "kanayo":       "shimmer", # expressive
+    "death":        "onyx",    # deep
+    "default":      "alloy",   # neutral
+}
+
+def generate_tts_audio(text: str, persona: str = "default") -> bytes | None:
+    """
+    Generate TTS audio for the given text using the persona's mapped voice.
+    Returns raw MP3 bytes, or None on failure.
+    Strips markdown/HTML before sending to TTS so it sounds natural.
+    """
+    try:
+        import re
+        # Strip markdown and HTML so audio reads cleanly
+        clean = re.sub(r'<[^>]+>', '', text)           # remove HTML tags
+        clean = re.sub(r'[*_`#~>]', '', clean)         # remove markdown symbols
+        clean = re.sub(r'\s+', ' ', clean).strip()     # collapse whitespace
+        # Limit to 4096 chars (OpenAI TTS limit)
+        clean = clean[:4096]
+        if not clean:
+            return None
+
+        voice = PERSONA_VOICES.get(persona, "alloy")
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice=voice,
+            input=clean,
+        )
+        return response.content
+    except Exception as e:
+        log_error("TTS generation failed", e)
+        return None

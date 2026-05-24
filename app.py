@@ -4,7 +4,8 @@ import streamlit.components.v1 as _components
 
 st.set_page_config(page_title="AlgoBuddy", page_icon="🤖", layout="wide", initial_sidebar_state="collapsed")
 
-from tutor_engine import get_tutor_response, clear_conversation, set_conversation_history
+# AUDIO EDIT 1: added generate_tts_audio to import
+from tutor_engine import get_tutor_response, clear_conversation, set_conversation_history, generate_tts_audio
 from course_registry import get_course, get_topic
 from validators import validate_user_message, ValidationError
 from auth import AuthManager
@@ -1563,27 +1564,29 @@ div[data-testid="stPageLink"] a:hover span {
 # INITIALIZE SESSION STATE
 # ============================================
 for k, v in {
-    "logged_in": False, 
-    "username": None, 
+    "logged_in": False,
+    "username": None,
     "user_email": None,
-    "messages": [], 
+    "messages": [],
     "student_name": "Student",
-    "active_course": None, 
-    "active_topic": None, 
-    "persona": "default", 
+    "active_course": None,
+    "active_topic": None,
+    "persona": "default",
     "use_scaffolding": False,
-    "view": "home", 
+    "view": "home",
     "thinking": False,
-    "current_session_id": None, 
+    "current_session_id": None,
     "tracker": None,
-    "auth_mode": "login", 
-    "auth_error": "", 
-    "auth_success": "", 
+    "auth_mode": "login",
+    "auth_error": "",
+    "auth_success": "",
     "cin_key": 0,
-    "practice_seed": None, 
-    "uploaded_files": [], 
+    "practice_seed": None,
+    "uploaded_files": [],
     "pending_image": False,
     "assignment_mode": False,
+    # AUDIO EDIT 2: added audio_enabled to session state
+    "audio_enabled": False,
 }.items():
     if k not in st.session_state:
         st.session_state[k] = v
@@ -1631,7 +1634,6 @@ if not st.session_state.logged_in:
                         if user_id:
                             files = get_user_files(user_id)
                             for f in files:
-                                # Use .get() with fallbacks — column name varies by schema version
                                 fname = f.get("file_name") or f.get("name") or f.get("filename") or "file"
                                 ftype = f.get("file_type") or f.get("type") or "text"
                                 image_data = None
@@ -2070,6 +2072,9 @@ elif st.session_state.view == "chat":
                     f'<div class="ab-row-b"><div class="ab-av">{bot}</div><div><div class="ab-bb">{c}</div><div class="ab-ts">{ts}</div></div></div>',
                     unsafe_allow_html=True,
                 )
+                # AUDIO EDIT 4: play audio for the last bot message if it has audio attached
+                if idx == last_bot_idx and msg.get("audio"):
+                    st.audio(msg["audio"], format="audio/mp3")
                 if idx == last_bot_idx:
                     st.markdown('<div class="practice-cta" style="margin-left:2.4rem;margin-top:0.1rem;margin-bottom:0.7rem;display:inline-block;">', unsafe_allow_html=True)
                     if st.button("💪 Practice what you just learned →", key="prac_cta"):
@@ -2102,6 +2107,12 @@ elif st.session_state.view == "chat":
                 "Assignment Mode", value=st.session_state.assignment_mode,
                 key="toggle_assign", help="AlgoBuddy guides step-by-step without giving answers",
             )
+            # AUDIO EDIT 3: voice responses toggle in the + popover
+            st.markdown("<div style='height:0.3rem'></div>", unsafe_allow_html=True)
+            st.session_state.audio_enabled = st.toggle(
+                "🔊 Voice responses", value=st.session_state.audio_enabled,
+                key="toggle_audio", help="AlgoBuddy speaks each response in the persona's voice",
+            )
             st.divider()
             st.markdown("**📎 Files**")
             for fi, f in enumerate(st.session_state.uploaded_files):
@@ -2118,7 +2129,7 @@ elif st.session_state.view == "chat":
                             user_id = st.session_state.get("user_id")
                             if user_id:
                                 delete_file_from_db(user_id, f["file_id"])
-                        
+
                         st.session_state.uploaded_files.pop(fi)
                         if not any(x["type"] == "image" for x in st.session_state.uploaded_files):
                             st.session_state.pending_image = False
@@ -2136,9 +2147,9 @@ elif st.session_state.view == "chat":
                     st.error(res["error"])
                 else:
                     st.session_state.uploaded_files.append({
-                        "name": res["filename"], 
+                        "name": res["filename"],
                         "type": res["type"],
-                        "content": res.get("content", ""), 
+                        "content": res.get("content", ""),
                         "image_data": res.get("image_data"),
                         "file_id": res.get("file_id")
                     })
@@ -2201,7 +2212,7 @@ elif st.session_state.view == "chat":
         st.session_state.cin_key += 1
         st.session_state.tracker._update_streak()
         st.session_state.tracker.save_to_file(_sf)
-         # ✅ ADD THIS HERE
+        # ✅ record_study_session (your original)
         st.session_state.tracker.record_study_session()
         st.session_state.tracker.save_to_file(_sf)
         st.rerun()
@@ -2230,7 +2241,15 @@ if st.session_state.get("thinking") and st.session_state.messages and st.session
             else "API key issue." if any(x in err for x in ["api", "key", "auth", "invalid"])
             else f"Error: {e}"
         )
-    st.session_state.messages.append({"role": "assistant", "content": reply, "time": time.strftime("%H:%M")})
+    # AUDIO EDIT 5: generate audio if voice responses is enabled
+    audio_bytes = None
+    if st.session_state.get("audio_enabled"):
+        try:
+            audio_bytes = generate_tts_audio(reply, st.session_state.persona)
+        except Exception:
+            audio_bytes = None
+    # AUDIO EDIT 6: include audio in the appended message dict
+    st.session_state.messages.append({"role": "assistant", "content": reply, "time": time.strftime("%H:%M"), "audio": audio_bytes})
     st.session_state.thinking = False
     if _img: st.session_state.pending_image = False
     bot_count = len([m for m in st.session_state.messages if m["role"] == "assistant"])

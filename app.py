@@ -2024,6 +2024,8 @@ elif st.session_state.view == "chat":
         tag_html += f'<span class="ab-ctx-tag">{icon} {f["name"]}</span>'
     if st.session_state.assignment_mode:
         tag_html += '<span class="ab-ctx-tag" style="background:rgba(139,92,246,0.15);border-color:rgba(139,92,246,0.4);color:#a78bfa;">📝 Assignment Mode</span>'
+    if st.session_state.get("audio_enabled"):
+        tag_html += '<span class="ab-ctx-tag" style="background:rgba(6,182,212,0.15);border-color:rgba(6,182,212,0.4);color:#06B6D4;">🔊 Voice responses ON</span>'
     if tag_html:
         st.markdown(
             f'<div style="display:flex;align-items:center;gap:0.4rem;padding:0.5rem 2rem 0;flex-wrap:wrap;">{tag_html}</div>',
@@ -2075,17 +2077,10 @@ elif st.session_state.view == "chat":
                     unsafe_allow_html=True,
                 )
                 # AUDIO EDIT 4: play audio for the last bot message if it has audio attached
+# AUDIO EDIT 4: play audio for the last bot message if it has audio attached
                 if idx == last_bot_idx and msg.get("audio") and st.session_state.get("audio_enabled"):
-                    audio_b64 = base64.b64encode(msg["audio"]).decode()
-                    audio_html = f"""
-                    <audio autoplay style="display:none;">
-                        <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mpeg">
-                    </audio>
-                    <script>
-                        document.querySelector('audio').play().catch(e => console.log('Audio play failed:', e));
-                    </script>
-                    """
-                    st.components.v1.html(audio_html, height=0)
+                    # Use st.audio with autoplay - simpler and more reliable
+                    st.audio(msg["audio"], format="audio/mp3", autoplay=True)
                 if idx == last_bot_idx:
                     st.markdown('<div class="practice-cta" style="margin-left:2.4rem;margin-top:0.1rem;margin-bottom:0.7rem;display:inline-block;">', unsafe_allow_html=True)
                     if st.button("💪 Practice what you just learned →", key="prac_cta"):

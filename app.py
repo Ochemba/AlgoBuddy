@@ -2033,6 +2033,12 @@ elif st.session_state.view == "chat":
         )
 
     st.markdown('<div class="ab-chat-wrap">', unsafe_allow_html=True)
+    
+    # Auto-play pending audio after user interaction
+    if st.session_state.get("audio_enabled") and st.session_state.get("pending_audio"):
+        st.audio(st.session_state.pending_audio, format="audio/mp3", autoplay=True)
+        st.session_state.pending_audio = None
+    
     if not st.session_state.messages:
         display_name = st.session_state.username or sname
         greet = {
@@ -2076,11 +2082,6 @@ elif st.session_state.view == "chat":
                     f'<div class="ab-row-b"><div class="ab-av">{bot}</div><div><div class="ab-bb">{c}</div><div class="ab-ts">{ts}</div></div></div>',
                     unsafe_allow_html=True,
                 )
-                # AUDIO EDIT 4: play audio for the last bot message if it has audio attached
-                # AUDIO EDIT 4: play audio for the last bot message if it has audio attached
-                if idx == last_bot_idx and msg.get("audio") and st.session_state.get("audio_enabled"):
-                    # st.audio with autoplay works better than HTML5 audio
-                    st.audio(msg["audio"], format="audio/mp3", autoplay=True)
                 if idx == last_bot_idx:
                     st.markdown('<div class="practice-cta" style="margin-left:2.4rem;margin-top:0.1rem;margin-bottom:0.7rem;display:inline-block;">', unsafe_allow_html=True)
                     if st.button("💪 Practice what you just learned →", key="prac_cta"):
@@ -2252,10 +2253,12 @@ if st.session_state.get("thinking") and st.session_state.messages and st.session
     if st.session_state.get("audio_enabled"):
         try:
             audio_bytes = generate_tts_audio(reply, st.session_state.persona)
+            if audio_bytes:
+                st.session_state.pending_audio = audio_bytes  # Store for next rerun
         except Exception as e:
             print(f"TTS error: {e}")
             audio_bytes = None
-    # AUDIO EDIT 6: include audio in the appended message dict
+    # AUDIO EDIT 6: include audio in the appended message dict (for history, not playback)
     st.session_state.messages.append({"role": "assistant", "content": reply, "time": time.strftime("%H:%M"), "audio": audio_bytes})
     st.session_state.thinking = False
     if _img: st.session_state.pending_image = False

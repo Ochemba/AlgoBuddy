@@ -2077,8 +2077,9 @@ elif st.session_state.view == "chat":
                     unsafe_allow_html=True,
                 )
                 # AUDIO EDIT 4: play audio for the last bot message if it has audio attached
+                # AUDIO EDIT 4: play audio for the last bot message if it has audio attached
                 if idx == last_bot_idx and msg.get("audio") and st.session_state.get("audio_enabled"):
-                    # Use st.audio with autoplay - simpler and more reliable
+                    # st.audio with autoplay works better than HTML5 audio
                     st.audio(msg["audio"], format="audio/mp3", autoplay=True)
                 if idx == last_bot_idx:
                     st.markdown('<div class="practice-cta" style="margin-left:2.4rem;margin-top:0.1rem;margin-bottom:0.7rem;display:inline-block;">', unsafe_allow_html=True)

@@ -2035,8 +2035,37 @@ elif st.session_state.view == "chat":
     st.markdown('<div class="ab-chat-wrap">', unsafe_allow_html=True)
     
     # Auto-play pending audio after user interaction
+       
+    # Auto-play pending audio after user interaction (compact player)
     if st.session_state.get("audio_enabled") and st.session_state.get("pending_audio"):
+        # Create a compact audio player at the bottom right
+        st.markdown("""
+            <style>
+            .compact-audio {
+                position: fixed;
+                bottom: 80px;
+                right: 20px;
+                width: 280px;
+                z-index: 1000;
+                background: rgba(6, 11, 43, 0.95);
+                border-radius: 30px;
+                padding: 8px 12px;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(6, 182, 212, 0.3);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            }
+            .compact-audio audio {
+                width: 100%;
+                height: 32px;
+            }
+            .compact-audio audio::-webkit-media-controls-panel {
+                background: transparent;
+            }
+            </style>
+            <div class="compact-audio">
+        """, unsafe_allow_html=True)
         st.audio(st.session_state.pending_audio, format="audio/mp3", autoplay=True)
+        st.markdown("</div>", unsafe_allow_html=True)
         st.session_state.pending_audio = None
     
     if not st.session_state.messages:

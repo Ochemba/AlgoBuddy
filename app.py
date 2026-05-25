@@ -1,6 +1,7 @@
 import streamlit as st
 import time
 import streamlit.components.v1 as _components
+import base64
 
 st.set_page_config(page_title="AlgoBuddy", page_icon="🤖", layout="wide", initial_sidebar_state="collapsed")
 
@@ -1587,6 +1588,7 @@ for k, v in {
     "assignment_mode": False,
     # AUDIO EDIT 2: added audio_enabled to session state
     "audio_enabled": False,
+    "pending_audio": None,
 }.items():
     if k not in st.session_state:
         st.session_state[k] = v
@@ -2073,8 +2075,17 @@ elif st.session_state.view == "chat":
                     unsafe_allow_html=True,
                 )
                 # AUDIO EDIT 4: play audio for the last bot message if it has audio attached
-                if idx == last_bot_idx and msg.get("audio"):
-                    st.audio(msg["audio"], format="audio/mp3")
+                if idx == last_bot_idx and msg.get("audio") and st.session_state.get("audio_enabled"):
+                    audio_b64 = base64.b64encode(msg["audio"]).decode()
+                    audio_html = f"""
+                    <audio autoplay style="display:none;">
+                        <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mpeg">
+                    </audio>
+                    <script>
+                        document.querySelector('audio').play().catch(e => console.log('Audio play failed:', e));
+                    </script>
+                    """
+                    st.components.v1.html(audio_html, height=0)
                 if idx == last_bot_idx:
                     st.markdown('<div class="practice-cta" style="margin-left:2.4rem;margin-top:0.1rem;margin-bottom:0.7rem;display:inline-block;">', unsafe_allow_html=True)
                     if st.button("💪 Practice what you just learned →", key="prac_cta"):
@@ -2246,7 +2257,8 @@ if st.session_state.get("thinking") and st.session_state.messages and st.session
     if st.session_state.get("audio_enabled"):
         try:
             audio_bytes = generate_tts_audio(reply, st.session_state.persona)
-        except Exception:
+        except Exception as e:
+            print(f"TTS error: {e}")
             audio_bytes = None
     # AUDIO EDIT 6: include audio in the appended message dict
     st.session_state.messages.append({"role": "assistant", "content": reply, "time": time.strftime("%H:%M"), "audio": audio_bytes})

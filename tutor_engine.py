@@ -573,30 +573,28 @@ def get_session_summary(): return current_tracker.format_session_summary()
 
 # Persona → OpenAI TTS voice mapping
 PERSONA_VOICES = {
-    "batman":       "onyx",    # deep, serious
-    "hermione":     "nova",    # clear, articulate
-    "tony_stark":   "echo",    # confident
-    "yoda":         "fable",   # warm, storytelling
-    "chill_senior": "alloy",   # relaxed
-    "osuofia":      "shimmer", # expressive
-    "kanayo":       "shimmer", # expressive
-    "death":        "onyx",    # deep
-    "default":      "alloy",   # neutral
+    "batman":       "onyx",
+    "hermione":     "nova",
+    "tony_stark":   "echo",
+    "yoda":         "fable",
+    "chill_senior": "alloy",
+    "osuofia":      "shimmer",
+    "kanayo":       "shimmer",
+    "death":        "onyx",
+    "default":      "alloy",
 }
 
 def generate_tts_audio(text: str, persona: str = "default") -> bytes | None:
     """
     Generate TTS audio for the given text using the persona's mapped voice.
     Returns raw MP3 bytes, or None on failure.
-    Strips markdown/HTML before sending to TTS so it sounds natural.
     """
     try:
         import re
-        # Strip markdown and HTML so audio reads cleanly
-        clean = re.sub(r'<[^>]+>', '', text)           # remove HTML tags
-        clean = re.sub(r'[*_`#~>]', '', clean)         # remove markdown symbols
-        clean = re.sub(r'\s+', ' ', clean).strip()     # collapse whitespace
-        # Limit to 4096 chars (OpenAI TTS limit)
+        # Clean text for better TTS
+        clean = re.sub(r'<[^>]+>', '', text)
+        clean = re.sub(r'[*_`#~>]', '', clean)
+        clean = re.sub(r'\s+', ' ', clean).strip()
         clean = clean[:4096]
         if not clean:
             return None

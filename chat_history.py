@@ -35,6 +35,12 @@ def save_session(username: str, session_id: str, messages: list,
     first_user = next((m["content"] for m in messages if m["role"] == "user"), "Chat")
     title = first_user[:60] + ("…" if len(first_user) > 60 else "")
 
+    # Strip audio bytes before saving — not serialisable and not needed in DB
+    clean_messages = [
+        {"role": m["role"], "content": m["content"], "time": m.get("time", "")}
+        for m in messages
+    ]
+
     try:
         # Check if session exists
         existing = supabase().table("chat_sessions").select("*").eq("user_id", user_id).eq("session_id", session_id).execute()
@@ -47,7 +53,7 @@ def save_session(username: str, session_id: str, messages: list,
                 "course_id": course_id,
                 "topic_id": topic_id,
                 "persona": persona,
-                "message_count": len(messages),
+                "message_count": len(clean_messages),
                 "updated_at": datetime.now().isoformat()
             }).eq("id", session["id"]).execute()
 
@@ -55,7 +61,7 @@ def save_session(username: str, session_id: str, messages: list,
             supabase().table("chat_messages").delete().eq("session_id", session["id"]).execute()
 
             # Insert new messages
-            for msg in messages:
+            for msg in clean_messages:
                 supabase().table("chat_messages").insert({
                     "session_id": session["id"],
                     "role": msg["role"],
@@ -71,12 +77,12 @@ def save_session(username: str, session_id: str, messages: list,
                 "course_id": course_id,
                 "topic_id": topic_id,
                 "persona": persona,
-                "message_count": len(messages)
+                "message_count": len(clean_messages)
             }).execute()
 
             if result.data:
                 session = result.data[0]
-                for msg in messages:
+                for msg in clean_messages:
                     supabase().table("chat_messages").insert({
                         "session_id": session["id"],
                         "role": msg["role"],
@@ -117,7 +123,8 @@ def load_all_sessions(username: str) -> list:
                 "message_count": s.get("message_count", 0),
             })
         return sessions
-    except Exception:
+    except Exception as e:
+        print(f"load_all_sessions error: {e}")
         return []
 
 
@@ -134,8 +141,11 @@ def load_session(username: str, session_id: str) -> dict | None:
 
         session = result.data[0]
 
-        # Load messages
-        messages_result = supabase().table("chat_messages").select("*").eq("session_id", session["id"]).order("created_at").execute()
+        # Load messages — order by id (insertion order), fallback to unordered
+        try:
+            messages_result = supabase().table("chat_messages").select("*").eq("session_id", session["id"]).order("id").execute()
+        except Exception:
+            messages_result = supabase().table("chat_messages").select("*").eq("session_id", session["id"]).execute()
 
         messages = []
         for msg in messages_result.data:
@@ -154,7 +164,8 @@ def load_session(username: str, session_id: str) -> dict | None:
             "persona": session.get("persona", "default"),
             "messages": messages
         }
-    except Exception:
+    except Exception as e:
+        print(f"load_session error: {e}")
         return None
 
 
